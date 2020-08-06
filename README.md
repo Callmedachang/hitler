@@ -39,4 +39,28 @@ Snowflake 算法描述：指定机器 & 同一时刻 & 某一并发序列，是�
 每秒下的并发序列，13 bits 可支持每秒 8192 个并发。
 
 ## Double Ring Buffer
-...之后补充吧
+RingBuffer 环形数组，数组每个元素成为一个 slot。RingBuffer 容量，默认为 Snowflake 算法中 sequence 最大值，且为 2^N。可通过boostPower配置进行扩容，以提高 RingBuffer 读写吞吐量。
+
+Tail 指针、Cursor 指针用于环形数组上读写 slot：
+
+* Tail 指针
+表示 Producer 生产的最大序号(此序号从 0 开始，持续递增)。Tail 不能超过 Cursor，即生产者不能覆盖未消费的 slot。当 Tail 已赶上 curosr，此时可通过rejectedPutBufferHandler指定 PutRejectPolicy
+
+* Cursor 指针
+表示 Consumer 消费到的最小序号(序号序列与 Producer 序列相同)。Cursor 不能超过 Tail，即不能消费未生产的 slot。当 Cursor 已赶上 tail，此时可通过rejectedTakeBufferHandler指定 TakeRejectPolicy
+![RingBuffer](doc/ringbuffer.png)
+CachedUidGenerator 采用了双 RingBuffer，Uid-RingBuffer 用于存储 Uid、Flag-RingBuffer 用于存储 Uid 状态(是否可填充、是否可消费)
+
+由于数组元素在内存中是连续分配的，可最大程度利用 CPU cache 以提升性能。但同时会带来「伪共享」FalseSharing 问题，为此在 Tail、Cursor 指针、Flag-RingBuffer 中采用了 CacheLine
+补齐方式。
+
+![FalseSharing](doc/cacheline_padding.png) 
+#### RingBuffer 填充时机 ####
+* 初始化预填充  
+  RingBuffer 初始化时，预先填充满整个 RingBuffer.
+  
+* 即时填充  
+  Take 消费时，即时检查剩余可用 slot 量(```tail``` - ```cursor```)，如小于设定阈值，则补全空闲 slots。阈值可通过```paddingFactor```来进行配置，请参考 Quick Start 中 CachedUidGenerator 配置
+  
+* 周期填充  
+  通过 Schedule 线程，定时补全空闲 slots。可通过```scheduleInterval```配置，以应用定时填充功能，并指定 Schedule 时间间隔  
