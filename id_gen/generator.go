@@ -1,18 +1,14 @@
 package id_gen
 
 import (
-	"hitler/utils"
 	"time"
 )
 
 type Generator struct {
 }
 
-func (g *Generator) GetID() string {
-	h := utils.ConvertToBin(time.Now().Unix())
-	start:=len(h)-28
-	res := string([]rune(h)[start:])
-	return res
+func (g *Generator) GetID() int64 {
+	return time.Now().Unix()
 }
 
 func NewGenerator() *Generator {

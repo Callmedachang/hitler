@@ -1,14 +1,15 @@
 package strorage
 
 import (
-	"fmt"
 	"hitler/id_gen"
-	"hitler/utils"
-	"strconv"
 	"time"
 )
 
-const minCap = 1024
+const (
+	defaultSequenceCap = 20
+	defaultMachineCap  = 15
+	defaultTimeCap     = 28
+)
 
 type RBuffer struct {
 	g          *id_gen.Generator
@@ -19,22 +20,29 @@ type RBuffer struct {
 	flagTail   int64
 	flags      []bool
 	size       int64
-	binCap     int
-	mid        string
+	mid        int64 //当钱的机器ID
+	//以下三个参数想起来为63！
+	sequenceCap uint //自增序列号的占用位数
+	machineCap  uint //机器ID的占用位数
+	timeCap     uint //时间Seconds的占用位数
 }
+
 type RBufferConfig struct {
-	Size       int64
-	MachineCap int
-	DbUrl      string
+	DbUrl       string
+	SequenceCap uint //自增序列号的占用位数
+	MachineCap  uint //机器ID的占用位数
+	TimeCap     uint //时间Seconds的占用位数
 }
 
 func NewRBuffer(conf *RBufferConfig) *RBuffer {
-	if conf.Size < 1 {
-		panic("RBuffer size must more than 1")
-	}
-	conf.Size = utils.NextPowOf2(conf.Size)
-	if conf.Size < minCap {
-		conf.Size = minCap
+	if conf.SequenceCap == 0 && conf.MachineCap == 0 && conf.TimeCap == 0 {
+		conf.MachineCap = defaultMachineCap
+		conf.SequenceCap = defaultSequenceCap
+		conf.TimeCap = defaultTimeCap
+	} else {
+		if conf.SequenceCap+conf.MachineCap+conf.TimeCap != 63 {
+			panic("invalid cap params")
+		}
 	}
 	mid := int64(0)
 	if m, err := NewMachineManager(conf.DbUrl); err != nil {
@@ -44,21 +52,18 @@ func NewRBuffer(conf *RBufferConfig) *RBuffer {
 			panic("NewMId error")
 		}
 	}
-	machineId := utils.ConvertToBin(mid)
-	if len([]rune(machineId)) < conf.MachineCap {
-		for i := len(machineId); i < conf.MachineCap; i++ {
-			machineId = "0" + machineId
-		}
-	}
+	sequenceSize := 1 << conf.SequenceCap
 	rb := &RBuffer{
-		g:          id_gen.NewGenerator(),
-		size:       conf.Size,
-		binCap:     len(utils.ConvertToBin(conf.Size)),
-		iDs:        make([]int64, conf.Size),
-		flags:      make([]bool, conf.Size),
-		mid:        machineId,
+		g:           id_gen.NewGenerator(),
+		size:        int64(sequenceSize),
+		iDs:         make([]int64, sequenceSize),
+		flags:       make([]bool, sequenceSize),
+		mid:         mid,
+		sequenceCap: conf.SequenceCap,
+		machineCap:  conf.MachineCap,
+		timeCap:     conf.TimeCap,
 	}
-	for i := 0; i < int(conf.Size); i++ {
+	for i := 0; i < sequenceSize; i++ {
 		rb.createID()
 	}
 	rb.cycleStuff()
@@ -97,26 +102,19 @@ func (r *RBuffer) cycleStuff() {
 						break
 					}
 				}
-
 			}
 		}
 	}()
 }
 
 func (r *RBuffer) createID() {
-	sequence := utils.ConvertToBin(r.iDsTail)
-	if len([]rune(sequence)) < r.binCap {
-		for i := len(sequence); i < r.binCap; i++ {
-			sequence = "0" + sequence
-		}
-	}
-	newIDStr := fmt.Sprintf("%s%s%s", r.g.GetID(), r.mid, sequence)
-
-	r.iDs[r.iDsTail], _ = strconv.ParseInt(newIDStr, 2, 64)
+	//IDs的补充
+	r.iDs[r.iDsTail] = r.g.GetID()<<r.timeCap + r.mid<<r.machineCap + r.iDsTail
 	r.iDsTail++
 	if r.iDsTail >= r.size {
 		r.iDsTail = 0
 	}
+	//flags的复位
 	r.flags[r.flagTail] = true
 	r.flagTail++
 	if r.flagTail >= r.size {

@@ -59,8 +59,21 @@ CachedUidGenerator 采用了双 RingBuffer，Uid-RingBuffer 用于存储 Uid、F
 * 初始化预填充  
   RingBuffer 初始化时，预先填充满整个 RingBuffer.
   
-* 即时填充  
-  Take 消费时，即时检查剩余可用 slot 量(```tail``` - ```cursor```)，如小于设定阈值，则补全空闲 slots。阈值可通过```paddingFactor```来进行配置，请参考 Quick Start 中 CachedUidGenerator 配置
-  
 * 周期填充  
-  通过 Schedule 线程，定时补全空闲 slots。可通过```scheduleInterval```配置，以应用定时填充功能，并指定 Schedule 时间间隔  
+  通过 Schedule 线程，定时补全空闲 slots。可通过```scheduleInterval```配置，以应用定时填充功能，并指定 Schedule 时间间隔 
+  
+Quick Start
+------------
+```go
+go get -u github.com/Callmedachang/hitler
+```
+
+### 关于 UID 比特分配的建议
+对于并发数要求不高、期望长期使用的应用, 可增加```timeCap```位数, 减少```sequenceCap```位数. 例如节点采取用完即弃的 WorkerIdAssigner 策略, 重启频率为 12 次/天,
+那么配置成```{"machineCap":23,"timeCap":31,"sequenceCap":9}```时, 可支持 28 个节点以整体并发量 14400 UID/s 的速度持续运行 68 年.
+
+对于节点重启频率频繁、期望长期使用的应用, 可增加```machineCap```和```timeCap```位数, 减少```sequenceCap```位数. 例如节点采取用完即弃的 WorkerIdAssigner 策略, 重启频率为 24*12 次/天,
+那么配置成```{"machineCap":27,"timeCap":30,"sequenceCap":6}```时, 可支持 37 个节点以整体并发量 2400 UID/s 的速度持续运行 34 年.
+
+### 性能测试
+之后补充~
