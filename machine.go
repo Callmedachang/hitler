@@ -1,4 +1,4 @@
-package strorage
+package hitler
 
 import (
 	_ "github.com/go-sql-driver/mysql"
@@ -15,7 +15,7 @@ type MachineManager struct {
 	engine *xorm.Engine
 }
 
-func NewMachineManager(mysqlUrl string) (*MachineManager, error) {
+func newMachineManager(mysqlUrl string) (*MachineManager, error) {
 	engine, err := xorm.NewEngine("mysql", mysqlUrl)
 	return &MachineManager{engine: engine}, err
 }

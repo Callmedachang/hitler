@@ -1,7 +1,6 @@
-package strorage
+package hitler
 
 import (
-	"hitler/id_gen"
 	"time"
 )
 
@@ -12,7 +11,6 @@ const (
 )
 
 type RBuffer struct {
-	g          *id_gen.Generator
 	idsCursor  int64
 	idsTail    int64
 	ids        []int64
@@ -45,7 +43,7 @@ func NewRBuffer(conf *RBufferConfig) *RBuffer {
 		}
 	}
 	mid := int64(0)
-	if m, err := NewMachineManager(conf.DbUrl); err != nil {
+	if m, err := newMachineManager(conf.DbUrl); err != nil {
 		panic("invalid Db")
 	} else {
 		if mid, err = m.NewMId(); err != nil {
@@ -54,7 +52,6 @@ func NewRBuffer(conf *RBufferConfig) *RBuffer {
 	}
 	sequenceSize := 1 << conf.SequenceCap
 	rb := &RBuffer{
-		g:           id_gen.NewGenerator(),
 		size:        int64(sequenceSize),
 		ids:         make([]int64, sequenceSize),
 		flags:       make([]bool, sequenceSize),
@@ -109,7 +106,7 @@ func (r *RBuffer) cycleStuff() {
 
 func (r *RBuffer) createID() {
 	//IDs的补充
-	r.ids[r.idsTail] = r.g.GetID()<<r.timeCap + r.mid<<r.machineCap + r.idsTail
+	r.ids[r.idsTail] = time.Now().Unix()<<r.timeCap + r.mid<<r.machineCap + r.idsTail
 	r.idsTail++
 	if r.idsTail >= r.size {
 		r.idsTail = 0

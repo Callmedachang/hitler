@@ -1,4 +1,4 @@
-package strorage
+package hitler
 
 import (
 	"log"
