@@ -13,9 +13,9 @@ const (
 
 type RBuffer struct {
 	g          *id_gen.Generator
-	iDsCursor  int64
-	iDsTail    int64
-	iDs        []int64
+	idsCursor  int64
+	idsTail    int64
+	ids        []int64
 	flagCursor int64
 	flagTail   int64
 	flags      []bool
@@ -56,7 +56,7 @@ func NewRBuffer(conf *RBufferConfig) *RBuffer {
 	rb := &RBuffer{
 		g:           id_gen.NewGenerator(),
 		size:        int64(sequenceSize),
-		iDs:         make([]int64, sequenceSize),
+		ids:         make([]int64, sequenceSize),
 		flags:       make([]bool, sequenceSize),
 		mid:         mid,
 		sequenceCap: conf.SequenceCap,
@@ -72,15 +72,15 @@ func NewRBuffer(conf *RBufferConfig) *RBuffer {
 
 func (r *RBuffer) GetID() (res int64) {
 	if r.flags[r.flagCursor] {
-		res = r.iDs[r.iDsCursor]
+		res = r.ids[r.idsCursor]
 		r.flags[r.flagCursor] = false
 		r.flagCursor++
-		r.iDsCursor++
+		r.idsCursor++
 		if r.flagCursor == r.size {
 			r.flagCursor = 0
 		}
-		if r.iDsCursor == r.size {
-			r.iDsCursor = 0
+		if r.idsCursor == r.size {
+			r.idsCursor = 0
 		}
 		return
 	} else {
@@ -109,10 +109,10 @@ func (r *RBuffer) cycleStuff() {
 
 func (r *RBuffer) createID() {
 	//IDs的补充
-	r.iDs[r.iDsTail] = r.g.GetID()<<r.timeCap + r.mid<<r.machineCap + r.iDsTail
-	r.iDsTail++
-	if r.iDsTail >= r.size {
-		r.iDsTail = 0
+	r.ids[r.idsTail] = r.g.GetID()<<r.timeCap + r.mid<<r.machineCap + r.idsTail
+	r.idsTail++
+	if r.idsTail >= r.size {
+		r.idsTail = 0
 	}
 	//flags的复位
 	r.flags[r.flagTail] = true
