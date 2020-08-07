@@ -20,8 +20,8 @@ type RBuffer struct {
 	flagTail   int64
 	flags      []bool
 	size       int64
-	mid        int64 //当钱的机器ID
-	//以下三个参数想起来为63！
+	mid        int64 //currentBuffer MachineID
+	//Notice sequenceCap+machineCap+timeCap=63
 	sequenceCap uint //自增序列号的占用位数
 	machineCap  uint //机器ID的占用位数
 	timeCap     uint //时间Seconds的占用位数
